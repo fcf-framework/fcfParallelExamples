@@ -1,0 +1,3 @@
+[submodule "libraries/fcfParallel"]
+	path = libraries/fcfParallel
+	url = https://github.com/fcf-framework/fcfParallel.git
