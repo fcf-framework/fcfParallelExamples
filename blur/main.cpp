@@ -22,13 +22,13 @@ FCF_PARALLEL_UNIT(
                            int a_height,
                            FCF_PARALLEL_GLOBAL const char* a_source,
                            FCF_PARALLEL_GLOBAL char* a_result) {
-      int offset = (int)(a_task->lowIndex * 3);
-      int y = (int)(a_task->lowIndex / a_width);
-      int x = (int)(a_task->lowIndex % a_width);
-      int begby = max(y - (int)a_blur, 0);
-      int endby = min(y + (int)a_blur + 1, a_height);
-      int begbx = max(x - (int)a_blur, 0);
-      int endbx = min(x + (int)a_blur + 1, a_width);
+      int offset = a_task->lowIndex * 3;
+      int y = a_task->lowIndex / a_width;
+      int x = a_task->lowIndex % a_width;
+      int begby = max(y - a_blur, 0);
+      int endby = min(y + a_blur + 1, a_height);
+      int begbx = max(x - a_blur, 0);
+      int endbx = min(x + a_blur + 1, a_width);
       int c     = (endby - begby) * (endbx - begbx);
 
       for(int channel = 0; channel < 3; ++channel) {
