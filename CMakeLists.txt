@@ -18,5 +18,6 @@ endif()
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/libraries)
 
 add_subdirectory(blur)
+add_subdirectory(blur-multy)
 
 

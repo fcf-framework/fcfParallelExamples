@@ -41,126 +41,8 @@ FCF_PARALLEL_UNIT(
         }
         a_result[offset + channel] = (char)(value / c);
       }
-      /*
-      std::cout << a_task->offset << " ["
-                << (unsigned int)(unsigned char)a_result[offset] << ":"
-                << (unsigned int)(unsigned char)a_result[offset + 1] << ":"
-                << (unsigned int)(unsigned char)a_result[offset + 2] << ":"
-                << "]" << std::endl;
-                */
     }
 )
-
-
-
-bool enableEngine(int a_devIndex, fcf::Parallel::Executor& a_executor, fcf::Union& a_state) {
-  a_state.ref<fcf::UnionMap>();
-  a_state["devices"].ref<fcf::UnionVector>();
-  bool result = false;
-  int curDeviceIndex = 0;
-  size_t engineCount = a_executor.getEngineCount();
-  for(size_t engineIndex = 0; engineIndex < engineCount; ++engineIndex) {
-    if (a_devIndex >= 0) {
-      a_executor.getEngine(engineIndex).property("enable", false);
-    }
-    if (a_executor.getEngine(engineIndex).property("devices").is(fcf::UT_VECTOR)) {
-      for(fcf::Union& propDev : a_executor.getEngine(engineIndex).property("devices")) {
-        if (a_devIndex >= 0) {
-          propDev["enable"] = false;
-        }
-        if (a_devIndex < 0 &&
-            (bool)a_executor.getEngine(engineIndex).property("enable") &&
-            (bool)propDev["enable"]) {
-          fcf::Union udev(fcf::UT_MAP);
-          udev["engineIndex"] = engineIndex;
-          udev["deviceName"] = (std::string)a_executor.getEngine(engineIndex).property("name") + " (" + (std::string)propDev["name"] + ")";
-          a_state["devices"].insert(udev);
-          result = true;
-        } else if (curDeviceIndex == a_devIndex) {
-          fcf::Union udev(fcf::UT_MAP);
-          udev["engineIndex"] = engineIndex;
-          udev["deviceName"] = (std::string)a_executor.getEngine(engineIndex).property("name") + " (" + (std::string)propDev["name"] + ")";
-          a_state["devices"].insert(udev);
-          a_executor.getEngine(engineIndex).property("enable", true);
-          propDev["enable"]      = true;
-          result = true;
-        }
-        ++curDeviceIndex;
-      }
-    } else {
-      if (a_devIndex < 0 && (bool)a_executor.getEngine(engineIndex).property("enable")) {
-        fcf::Union udev(fcf::UT_MAP);
-        udev["engineIndex"] = engineIndex;
-        udev["deviceName"] = (std::string)a_executor.getEngine(engineIndex).property("name");
-        a_state["devices"].insert(udev);
-        result = true;
-      } if (curDeviceIndex == a_devIndex) {
-        fcf::Union udev(fcf::UT_MAP);
-        udev["engineIndex"] = engineIndex;
-        udev["deviceName"] = (std::string)a_executor.getEngine(engineIndex).property("name");
-        a_state["devices"].insert(udev);
-        a_executor.getEngine(engineIndex).property("enable", true);
-        result = true;
-      }
-      ++curDeviceIndex;
-    }
-  }
-  return result;
-}
-
-void executeEngine(int, fcf::Parallel::Executor& a_executor, const std::string& a_sourceFilePath, const std::string& a_outputFilePath, fcf::Union& a_state) {
-  std::vector<char> sourceRGB;
-  size_t            sourceRGBWidth;
-  size_t            sourceRGBHeight;
-  fcf::Image::loadRGBFromBmpFile(a_sourceFilePath, sourceRGB, sourceRGBWidth, sourceRGBHeight);
-
-  std::vector<char> outputRGB(sourceRGB.size(), (char)(unsigned char)0xff);
-
-  a_executor.initialize();
-
-  fcf::Union stat;
-
-  fcf::Parallel::Call call;
-  call.name = "blur";
-  call.size = sourceRGBWidth * sourceRGBHeight;
-  call.split = false;
-  call.packageSize = call.size;
-  call.stat = &stat;
-
-  a_executor(call,
-           (unsigned int)5,
-           (unsigned int)sourceRGBWidth,
-           (unsigned int)sourceRGBHeight,
-           fcf::Parallel::refArg(sourceRGB),
-           fcf::Parallel::refArg(outputRGB,
-                                 fcf::Parallel::ArgSplit(fcf::Parallel::PS_FULL),
-                                 fcf::Parallel::ArgUpload(true),
-                                 fcf::Parallel::ArgSplitSize(3)
-                                )
-           );
-
-  fcf::Image::writeRGBToBmpFile(a_outputFilePath, outputRGB, sourceRGBWidth, sourceRGBHeight);
-
-  a_state["duration"] = (double)stat["packageDuration"] / 1000 / 1000 / 1000;
-}
-
-void printStartInfo(int, fcf::Parallel::Executor&, const std::string&, const std::string& a_output, fcf::Union& a_state) {
-  std::string devicesStr;
-  for(fcf::Union& udev : a_state["devices"]){
-    if (!devicesStr.empty()){
-      devicesStr += "; ";
-    }
-    devicesStr += (std::string)udev["engineIndex"] + ":" + (std::string)udev["deviceName"];
-  }
-  std::cout << "------------"  << std::endl;
-  std::cout << "Output file: " << a_output << std::endl;
-  std::cout << "Devices:     "     << devicesStr << std::endl;
-}
-
-void printResultInfo(int, fcf::Parallel::Executor&, const std::string&, const std::string&, fcf::Union& a_state) {
-  std::cout << "Duration:    " << a_state["duration"] << std::endl;
-  std::cout << std::endl;
-}
 
 int main(int a_argc, char* a_argv[]){
   std::string sourceFilePath;
@@ -181,26 +63,57 @@ int main(int a_argc, char* a_argv[]){
     return 1;
   }
 
-  size_t      outputSuffixPos = outputFilePath.rfind(".");
-  std::string outputSuffix    = std::string::npos != outputSuffixPos ? outputFilePath.substr(outputSuffixPos)     : ".bmp";
-  std::string outputPrefix    = std::string::npos != outputSuffixPos ? outputFilePath.substr(0, outputSuffixPos)  : "";
-
-  int engineIndex = -1;
-  while(true){
-    fcf::Union state;
-    fcf::Parallel::Executor executor;
-    if (!enableEngine(engineIndex, executor, state)) {
-      break;
-    }
-    executor.getEngine("cpu").property("threads", 3);
-    std::string currentOutputFilePath = outputPrefix +
-                                        ".device_" +
-                                        (engineIndex == -1 ? std::string("default") : std::to_string(engineIndex)) +
-                                        outputSuffix;
-    printStartInfo(engineIndex, executor, sourceFilePath, currentOutputFilePath, state);
-    executeEngine(engineIndex, executor, sourceFilePath, currentOutputFilePath, state);
-    printResultInfo(engineIndex, executor, sourceFilePath, currentOutputFilePath, state);
-    ++engineIndex;
+  std::vector<char> sourceRGB;
+  size_t            sourceRGBWidth;
+  size_t            sourceRGBHeight;
+  try {
+    fcf::Image::loadRGBFromBmpFile(sourceFilePath, sourceRGB, sourceRGBWidth, sourceRGBHeight);
+  } catch(std::exception& e){
+    std::cerr << "Invalid load BMP file: " << e.what() << std::endl;
+    return 1;
   }
-  return 0;
+
+  std::vector<char> outputRGB(sourceRGB.size());
+
+  fcf::Union state;
+
+  try {
+    fcf::Parallel::Executor executor;
+    executor.initialize();
+
+    fcf::Parallel::Call call;
+    call.name = "blur";
+    call.size = sourceRGBWidth * sourceRGBHeight;
+    call.stat = &state;
+
+    executor(call,
+             (unsigned int)5,
+             (unsigned int)sourceRGBWidth,
+             (unsigned int)sourceRGBHeight,
+             fcf::Parallel::refArg(sourceRGB),
+             fcf::Parallel::refArg(outputRGB,
+                                   fcf::Parallel::ArgSplit(fcf::Parallel::PS_FULL),
+                                   fcf::Parallel::ArgUpload(true),
+                                   fcf::Parallel::ArgSplitSize(3)
+                                  )
+             );
+  } catch(std::exception& e) {
+    std::cerr << "Error in performing parallel calculations: " << e.what() << std::endl;
+    return 1;
+  }
+
+  try {
+    fcf::Image::writeRGBToBmpFile(outputFilePath, outputRGB, sourceRGBWidth, sourceRGBHeight);
+  } catch(std::exception& e){
+    std::cerr << "Invalid write BMP file: " << e.what() << std::endl;
+    return 1;
+  }
+
+  std::cout << "Time spent on implementation: " << ((double)state["packageDuration"]/(1000*1000*1000)) << " sec" << std::endl;  
+  std::cout << "Actions performed on the following devices: " << std::endl;  
+  for(fcf::Union& dev : state["devices"]) {
+    std::cout << "    Engine: "<< dev["engine"] << "; Device: " << dev["device"] << std::endl;
+  }
+
+
 }
