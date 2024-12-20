@@ -116,7 +116,6 @@ void executeEngine(int, fcf::Parallel::Executor& a_executor, const std::string& 
   fcf::Parallel::Call call;
   call.name = "blur";
   call.size = sourceRGBWidth * sourceRGBHeight;
-  call.split = false;
   call.packageSize = call.size;
   call.state = &state;
 
