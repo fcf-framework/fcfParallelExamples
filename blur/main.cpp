@@ -84,7 +84,7 @@ int main(int a_argc, char* a_argv[]){
     fcf::Parallel::Call call;
     call.name = "blur";
     call.size = sourceRGBWidth * sourceRGBHeight;
-    call.stat = &state;
+    call.state = &state;
 
     executor(call,
              (unsigned int)5,

@@ -111,14 +111,14 @@ void executeEngine(int, fcf::Parallel::Executor& a_executor, const std::string& 
 
   a_executor.initialize();
 
-  fcf::Union stat;
+  fcf::Union state;
 
   fcf::Parallel::Call call;
   call.name = "blur";
   call.size = sourceRGBWidth * sourceRGBHeight;
   call.split = false;
   call.packageSize = call.size;
-  call.stat = &stat;
+  call.state = &state;
 
   a_executor(call,
            (unsigned int)5,
@@ -134,7 +134,7 @@ void executeEngine(int, fcf::Parallel::Executor& a_executor, const std::string& 
 
   fcf::Image::writeRGBToBmpFile(a_outputFilePath, outputRGB, sourceRGBWidth, sourceRGBHeight);
 
-  a_state["duration"] = (double)stat["packageDuration"] / 1000 / 1000 / 1000;
+  a_state["duration"] = (double)state["packageDuration"] / 1000 / 1000 / 1000;
 }
 
 void printStartInfo(int, fcf::Parallel::Executor&, const std::string&, const std::string& a_output, fcf::Union& a_state) {
