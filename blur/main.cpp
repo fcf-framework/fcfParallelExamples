@@ -109,11 +109,11 @@ int main(int a_argc, char* a_argv[]){
     return 1;
   }
 
-  std::cout << "Time spent on implementation: " << ((double)state["packageDuration"]/(1000*1000*1000)) << " sec" << std::endl;  
-  std::cout << "Actions performed on the following devices: " << std::endl;  
+  std::cout << "Time spent on implementation: " << ((double)state["packageDuration"]/(1000*1000*1000)) << " sec" << std::endl;
+  std::cout << "Actions performed on the following devices: " << std::endl;
   for(fcf::Union& dev : state["devices"]) {
     std::cout << "    Engine: "<< dev["engine"] << "; Device: " << dev["device"] << std::endl;
   }
 
-
+  return 0;
 }
