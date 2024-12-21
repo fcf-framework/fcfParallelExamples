@@ -45,7 +45,7 @@ void printHelp(){
 
 int main(int a_argc, char* a_argv[]){
   //
-  // Processing command line argumets
+  // Processing command line arguments
   std::string sourceFilePath;
   std::string outputFilePath;
   for(int i = 1; i < a_argc; ++i) {
