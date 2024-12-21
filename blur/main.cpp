@@ -1,19 +1,10 @@
+#include <iostream>
 #include <fcfImage/image.hpp>
 #include <fcfParallel/parallel.hpp>
-#include <iostream>
-#include <fstream>
-#include <cstring>
-#include <cmath>
-#include <vector>
-#include <stdexcept>
-void printHelp(){
-  std::cout << "An example application illustrating the use of fcfParallel" << std::endl;
-  std::cout << "  Application launch format: parallel-example-001-blur SOURCE_BMP_FILE OUTPUT_BMP_FILE" << std::endl;
-  std::cout << "  Options:" << std::endl;
-  std::cout << "    SOURCE_BMP_FILE - Source BMP file." << std::endl;
-  std::cout << "    OUTPUT_BMP_FILE - Resulting BMP file with the blur effect applied." << std::endl;
-}
 
+//
+// Pixel processing function performed on CPU/GPU
+//
 FCF_PARALLEL_UNIT(
     blur,
     void FCF_PARALLEL_MAIN(const FCFParallelTask* a_task,
@@ -44,7 +35,17 @@ FCF_PARALLEL_UNIT(
     }
 )
 
+void printHelp(){
+  std::cout << "An example application illustrating the use of fcfParallel" << std::endl;
+  std::cout << "  Application launch format: parallel-example-001-blur SOURCE_BMP_FILE OUTPUT_BMP_FILE" << std::endl;
+  std::cout << "  Options:" << std::endl;
+  std::cout << "    SOURCE_BMP_FILE - Source BMP file." << std::endl;
+  std::cout << "    OUTPUT_BMP_FILE - Resulting BMP file with the blur effect applied." << std::endl;
+}
+
 int main(int a_argc, char* a_argv[]){
+  //
+  // Processing command line argumets
   std::string sourceFilePath;
   std::string outputFilePath;
   for(int i = 1; i < a_argc; ++i) {
@@ -63,6 +64,8 @@ int main(int a_argc, char* a_argv[]){
     return 1;
   }
 
+  //
+  // Loading BMP image from file
   std::vector<char> sourceRGB;
   size_t            sourceRGBWidth;
   size_t            sourceRGBHeight;
@@ -73,19 +76,28 @@ int main(int a_argc, char* a_argv[]){
     return 1;
   }
 
+  // Result image
   std::vector<char> outputRGB(sourceRGB.size());
 
+  //The object that will contain debugging information
   fcf::Union state;
 
+  //
+  // Performing parallel calculations
   try {
+    // Object initialization
     fcf::Parallel::Executor executor;
     executor.initialize();
 
     fcf::Parallel::Call call;
+    // Unit name to execute declared macro FCF_PARALLEL_UNIT
     call.name = "blur";
+    // Number of iterations
     call.size = sourceRGBWidth * sourceRGBHeight;
+    // Specify the object in which you will need to record debugging information
     call.state = &state;
 
+    // Running parallel computing
     executor(call,
              (unsigned int)5,
              (unsigned int)sourceRGBWidth,
@@ -102,6 +114,8 @@ int main(int a_argc, char* a_argv[]){
     return 1;
   }
 
+  //
+  // Record the result in a BMP file
   try {
     fcf::Image::writeRGBToBmpFile(outputFilePath, outputRGB, sourceRGBWidth, sourceRGBHeight);
   } catch(std::exception& e){
@@ -109,7 +123,9 @@ int main(int a_argc, char* a_argv[]){
     return 1;
   }
 
-  std::cout << "Time spent on implementation: " << ((double)state["packageDuration"]/(1000*1000*1000)) << " sec" << std::endl;
+  //
+  // Displaying debugging information
+  std::cout << "Time spent on implementation: " << ((double)state["duration"]/(1000*1000*1000)) << " sec" << std::endl;
   std::cout << "Actions performed on the following devices: " << std::endl;
   for(fcf::Union& dev : state["devices"]) {
     std::cout << "    Engine: "<< dev["engine"] << "; Device: " << dev["device"] << std::endl;
