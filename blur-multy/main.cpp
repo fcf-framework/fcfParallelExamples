@@ -16,6 +16,7 @@ void printHelp(){
 
 FCF_PARALLEL_UNIT(
     blur,
+    {},
     void FCF_PARALLEL_MAIN(const FCFParallelTask* a_task,
                            int a_blur,
                            int a_width,
